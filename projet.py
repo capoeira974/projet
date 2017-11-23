@@ -26,6 +26,8 @@
 
 import sys
 import pygame
+import socket
+import select
 
 # Screen setup
 
@@ -52,10 +54,24 @@ racket_coords = racket.get_rect()
 def throw():
     ball_coords.left = 2*width/3
     ball_coords.top = height/2
-
 throw()
 
+if sys.argv==2:
+    throw()
+
+# init connexion
+main_connexion=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
+main_connexion.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+main_connexion.bind(('',7777)) 
+main_connexion.listen(0)
+player_connect=[]
 while True:
+    sockselect,x,y=select.select(player_connect+[main_connexion],[],[])
+    for i in sockselect:
+        if i == main_connexion:
+            new_player,ip_port_player =main_connexion.accept()
+            player_connect.append(new_player)
+    
     for e in pygame.event.get():
         # Check for exit
         if e.type == pygame.QUIT:
@@ -80,6 +96,8 @@ while True:
 
         #else:
         #    print(e)
+
+
 
     # Move ball
     ball_coords = ball_coords.move(ball_speed)
@@ -112,6 +130,8 @@ while True:
     screen.fill(clay)
     screen.blit(ball, ball_coords)
     screen.blit(racket, racket_coords)
+    if sys.argv==2:
+        screen.blit(racket,(width-10,height/2))
     pygame.display.flip()
 
     # sleep 10ms, since there is no need for more than 100Hz refresh :)

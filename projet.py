@@ -50,20 +50,12 @@ ball_coords = ball.get_rect()
 racket = pygame.image.load("image/racket.png")
 racket_coords = racket.get_rect()
 
-def add_racket():
-    racket = pygame.image.load("image/racket.png")
-    racket_coords = racket.get_rect()
-
 # Throw ball from center
 def throw():
     ball_coords.left = 2*width/3
     ball_coords.top = height/2
 
-add_racket()
 throw()
-
-if sys.argv==2:
-    throw()
 
 # init connexion
 main_connexion=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP

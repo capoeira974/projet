@@ -29,6 +29,28 @@ import pygame
 import socket
 import select
 
+if len(sys.argv)==1:
+    print("Connecter en tant que server")
+    main_connexion=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
+    main_connexion.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+    main_connexion.bind(('',7777)) 
+    main_connexion.listen(1)
+    player_connect=[]
+    sockselect,x,y=select.select(player_connect+[main_connexion],[],[])
+    for i in sockselect:
+        if i == main_connexion:
+            new_player,ip_port_player =main_connexion.accept()
+            player_connect.append(new_player)
+            print("un joueur qui s est connecte")
+
+elif len(sys.argv)==2: # argv[0]=projet.py arv[1]= nom 
+    print("Connecter en tant que client")
+    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
+    s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+    s.connect((sys.argv[1],7777))
+
+
+
 # Screen setup
 
 width = 800
@@ -57,19 +79,7 @@ def throw():
 
 throw()
 
-# init connexion
-main_connexion=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
-main_connexion.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-main_connexion.bind(('',7777)) 
-main_connexion.listen(0)
-player_connect=[]
-while True:
-    sockselect,x,y=select.select(player_connect+[main_connexion],[],[])
-    for i in sockselect:
-        if i == main_connexion:
-            new_player,ip_port_player =main_connexion.accept()
-            player_connect.append(new_player)
-    
+while True:            
     for e in pygame.event.get():
         # Check for exit
         if e.type == pygame.QUIT:

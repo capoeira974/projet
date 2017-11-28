@@ -29,7 +29,9 @@ import pygame
 import socket
 import select
 
+#Connexion serveur ou client
 if len(sys.argv)==1:
+
     print("Connecter en tant que server")
     main_connexion=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
     main_connexion.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
@@ -106,9 +108,35 @@ while True:
         #    print(e)
 
 
-
     # Move ball
     ball_coords = ball_coords.move(ball_speed)
+
+
+    if len(sys.argv) == 1:
+        #msg=str(ball_coords.x)+str(ball_coords.y)
+        data= str(ball_coords.x)+","+str(ball_coords.y)
+        print(data)
+        print("hello")
+        new_player.send(data)
+        resume=1
+        while resume:
+            accuse=new_player.recv(100)
+            if accuse==data:
+                resume=0
+
+    if len(sys.argv) == 2:       
+        data = s.recv(100)
+        if data !="":
+            print(data)
+            print ("hello")
+            s.send(data)
+            x,y=data.split(",")
+            print(type(x))
+            x=int(x)
+            y=int(y)
+        else:
+            boucle=0
+
     # voir la position de la balle -- print(all_coords)
     # Bounce ball on walls
     if ball_coords.left < 0 or ball_coords.right >= width:
@@ -134,11 +162,21 @@ while True:
             print("lost!")
             throw()
 
-    # Display everything
-    screen.fill(clay)
-    screen.blit(ball, ball_coords)
-    screen.blit(racket, racket_coords)
-    pygame.display.flip()
 
-    # sleep 10ms, since there is no need for more than 100Hz refresh :)
-    pygame.time.delay(10)
+    if len(sys.argv)==1:
+        # Display everything
+        screen.fill(clay)
+        screen.blit(ball, ball_coords)
+        screen.blit(racket, racket_coords)
+        pygame.display.flip()
+        # sleep 10ms, since there is no need for more than 100Hz refresh :)
+        pygame.time.delay(100)
+    
+    elif len(sys.argv)==2:
+        # Display everything
+        screen.fill(clay)
+        screen.blit(ball,(x,y))
+        screen.blit(racket, racket_coords)
+        pygame.display.flip()
+        # sleep 10ms, since there is no need for more than 100Hz refresh :)
+        pygame.time.delay(100)

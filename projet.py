@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 # Copyright (c) 2017 Samuel Thibault <samuel.thibault@ens-lyon.org>
 # All rights reserved.
 # 
@@ -29,7 +28,7 @@ import pygame
 import socket
 import select
 
-#Connexion serveur ou client
+#Connexion serveur
 if len(sys.argv)==1:
 
     print("Connecter en tant que server")
@@ -45,6 +44,7 @@ if len(sys.argv)==1:
             player_connect.append(new_player)
             print("un joueur qui s est connecte")
 
+#connexion client
 elif len(sys.argv)==2: # argv[0]=projet.py arv[1]= nom 
     print("Connecter en tant que client")
     s=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
@@ -79,7 +79,8 @@ def throw():
     ball_coords.left = 2*width/3
     ball_coords.top = height/2
 
-throw()
+if len(sys.argv)==1:
+    throw()
 
 while True:            
     for e in pygame.event.get():
@@ -111,12 +112,10 @@ while True:
     # Move ball
     ball_coords = ball_coords.move(ball_speed)
 
-
+    #Share ball data between server/ client
     if len(sys.argv) == 1:
-        #msg=str(ball_coords.x)+str(ball_coords.y)
         data= str(ball_coords.x)+","+str(ball_coords.y)
-        print(data)
-        print("hello")
+        #print(data)
         new_player.send(data)
         resume=1
         while resume:
@@ -127,18 +126,20 @@ while True:
     if len(sys.argv) == 2:       
         data = s.recv(100)
         if data !="":
-            print(data)
-            print ("hello")
-            s.send(data)
+            #print(data)
             x,y=data.split(",")
-            print(type(x))
+            #print(type(x)) 
             x=int(x)
             y=int(y)
-        else:
-            boucle=0
+            ball_coords.x=x
+            ball_coords.y=y
+            s.send(data)
+
+        
+
 
     # voir la position de la balle -- print(all_coords)
-    # Bounce ball on walls
+    # Rebondir la balle sur le mur
     if ball_coords.left < 0 or ball_coords.right >= width:
         ball_speed[0] = -ball_speed[0]
     if ball_coords.top < 0 or ball_coords.bottom >= height:
@@ -146,37 +147,57 @@ while True:
 
     # Move racket
     racket_coords = racket_coords.move(racket_speed)
-    # Clip racket on court
-    if racket_coords.left < 0:
-        racket_coords.left = 0
-    elif racket_coords.right >= width:
-        racket_coords.right = width-1
-    if racket_coords.top < 0:
-        racket_coords.top = 0
-    elif racket_coords.bottom >= height:
-        racket_coords.bottom = height-1
 
-    # Racket reached racket position?
-    if ball_coords.left <= 0:
-        if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
-            print("lost!")
-            throw()
+
+    # Position de la raquette : server
+    if len(sys.argv)==1:
+        if racket_coords.left < 0:
+            racket_coords.left = 0
+        elif racket_coords.right >= width:
+            racket_coords.right = width-1
+        if racket_coords.top < 0:
+            racket_coords.top = 0
+        elif racket_coords.bottom >= height:
+            racket_coords.bottom = height-1
+        # Position de la racket en fonction de la balle ?
+        if ball_coords.left <= 0:
+            if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
+                print("lost!")
+                throw()
+    # Posiition de la raquette  : client
+    elif len(sys.argv)==2:
+        if racket_coords.right < width:
+            racket_coords.right = width
+        elif racket_coords.left >= width:
+            racket_coords.left = width+1
+        if racket_coords.top < 0:
+            racket_coords.top = 0
+        elif racket_coords.bottom >= height:
+            racket_coords.bottom = height-1
+        # Position de la racket en fonction de la balle ?
+        if ball_coords.right >= width:
+            if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
+                print("lost!")
+                throw()
+    
+    
 
 
     if len(sys.argv)==1:
-        # Display everything
+        # Afficher l'ensemble
         screen.fill(clay)
         screen.blit(ball, ball_coords)
         screen.blit(racket, racket_coords)
         pygame.display.flip()
-        # sleep 10ms, since there is no need for more than 100Hz refresh :)
-        pygame.time.delay(100)
+        # Attendre 10ms, Depuis il n'y a pas besoin plus que  100Hz rpour raffraichir :)
+        pygame.time.delay(10)
     
     elif len(sys.argv)==2:
-        # Display everything
+        # Afficher l'ensemble
         screen.fill(clay)
-        screen.blit(ball,(x,y))
+        #screen.blit(ball,(x,y))
+        screen.blit(ball,ball_coords)
         screen.blit(racket, racket_coords)
         pygame.display.flip()
-        # sleep 10ms, since there is no need for more than 100Hz refresh :)
-        pygame.time.delay(100)
+       
+        pygame.time.delay(10)

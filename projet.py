@@ -51,8 +51,6 @@ elif len(sys.argv)==2: # argv[0]=projet.py arv[1]= nom
     s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
     s.connect((sys.argv[1],7777))
 
-
-
 # Screen setup
 
 width = 800
@@ -79,10 +77,12 @@ def throw():
     ball_coords.left = 2*width/3
     ball_coords.top = height/2
 
+
 if len(sys.argv)==1:
     throw()
 
 while True:            
+
     for e in pygame.event.get():
         # Check for exit
         if e.type == pygame.QUIT:
@@ -107,7 +107,6 @@ while True:
 
         #else:
         #    print(e)
-
 
     # Move ball
     ball_coords = ball_coords.move(ball_speed)
@@ -147,8 +146,6 @@ while True:
 
     # Move racket
     racket_coords = racket_coords.move(racket_speed)
-
-
     # Position de la raquette : server
     if len(sys.argv)==1:
         if racket_coords.left < 0:
@@ -179,10 +176,7 @@ while True:
             if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
                 print("lost!")
                 throw()
-    
-    
-
-
+        
     if len(sys.argv)==1:
         # Afficher l'ensemble
         screen.fill(clay)
@@ -201,3 +195,30 @@ while True:
         pygame.display.flip()
        
         pygame.time.delay(10)
+    # Clip racket on court
+    if racket_coords.left < 0:
+        racket_coords.left = 0
+    elif racket_coords.right >= width:
+        racket_coords.right = width-1
+    if racket_coords.top < 0:
+        racket_coords.top = 0
+    elif racket_coords.bottom >= height:
+        racket_coords.bottom = height-1
+
+    # Racket reached racket position?
+    if ball_coords.left <= 0:
+        if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
+            print("lost!")
+            throw()
+
+    # Display everything
+    screen.fill(clay)
+    screen.blit(ball, ball_coords)
+    screen.blit(racket, racket_coords)
+    if sys.argv==2:
+        screen.blit(racket,(width-10,height/2))
+    pygame.display.flip()
+
+    # sleep 10ms, since there is no need for more than 100Hz refresh :)
+    pygame.time.delay(10)
+

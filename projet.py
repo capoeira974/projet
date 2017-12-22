@@ -195,30 +195,3 @@ while True:
         pygame.display.flip()
        
         pygame.time.delay(10)
-    # Clip racket on court
-    if racket_coords.left < 0:
-        racket_coords.left = 0
-    elif racket_coords.right >= width:
-        racket_coords.right = width-1
-    if racket_coords.top < 0:
-        racket_coords.top = 0
-    elif racket_coords.bottom >= height:
-        racket_coords.bottom = height-1
-
-    # Racket reached racket position?
-    if ball_coords.left <= 0:
-        if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
-            print("lost!")
-            throw()
-
-    # Display everything
-    screen.fill(clay)
-    screen.blit(ball, ball_coords)
-    screen.blit(racket, racket_coords)
-    if sys.argv==2:
-        screen.blit(racket,(width-10,height/2))
-    pygame.display.flip()
-
-    # sleep 10ms, since there is no need for more than 100Hz refresh :)
-    pygame.time.delay(10)
-

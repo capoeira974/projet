@@ -28,8 +28,11 @@ import pygame
 import socket
 import select
 
+serveur=1
+client=2
+point = 0
 #Connexion serveur
-if len(sys.argv)==1:
+if len(sys.argv)==serveur:
 
     print("Connecter en tant que server")
     main_connexion=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
@@ -40,16 +43,16 @@ if len(sys.argv)==1:
     sockselect,x,y=select.select(player_connect+[main_connexion],[],[])
     for i in sockselect:
         if i == main_connexion:
-            new_player,ip_port_player =main_connexion.accept()
-            player_connect.append(new_player)
+            sock,ip_port_player =main_connexion.accept()
+            player_connect.append(sock)
             print("un joueur qui s est connecte")
 
 #connexion client
-elif len(sys.argv)==2: # argv[0]=projet.py arv[1]= nom 
+elif len(sys.argv)==client: # argv[0]=projet.py arv[1]= nom 
     print("Connecter en tant que client")
-    s=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
-    s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-    s.connect((sys.argv[1],7777))
+    sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
+    sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+    sock.connect((sys.argv[1],7777))
 
 # Screen setup
 
@@ -77,22 +80,27 @@ def throw(facteur):
     ball_coords.left = facteur*width/3
     ball_coords.top = height/2
 
+def score():
+    font=pygame.font.SysFont("Arial",24,bold=True)
+    text=font.render(str(point),1,(0,255,0))
+    screen.blit(text,(50,50))
 
-if len(sys.argv)==1:
-    throw(2)
 
-if len(sys.argv) == 1:
+if len(sys.argv)==serveur:
+    throw(serveur)
+
+if len(sys.argv) == serveur:
     data= str(ball_coords.x)+","+str(ball_coords.y)
     #print(data)
-    new_player.send(data)
+    sock.send(data)
     resume=1
     while resume:
-        accuse=new_player.recv(100)
+        accuse=sock.recv(100)
         if accuse==data:
             resume=0
 
-if len(sys.argv) == 2:       
-    data = s.recv(100)
+if len(sys.argv) == client:       
+    data = sock.recv(100)
     if data !="":
         #print(data)
         x,y=data.split(",")
@@ -101,7 +109,7 @@ if len(sys.argv) == 2:
         y=int(y)
         ball_coords.x=x
         ball_coords.y=y
-        s.send(data)
+        sock.send(data)
 
 while True:            
 
@@ -132,58 +140,69 @@ while True:
 
     # Move ball
     ball_coords = ball_coords.move(ball_speed)
-    print(ball_coords.x)
+    #print(ball_coords.x)
 
     if ball_coords.x < width/2:
-        print("serveur qui gere la balle")
+        #print("serveur qui gere la balle")
             #Share ball data between server/ client
-        if len(sys.argv) == 1:
+        if len(sys.argv) == serveur:
             data= str(ball_coords.x)+","+str(ball_coords.y)
             #print(data)
-            new_player.send(data)
+            sock.send(data)
             resume=1
             while resume:
-                accuse=new_player.recv(100)
-                print("accuser de reception")
+                accuse=sock.recv(100)
+                #print("accuser de reception")
                 if accuse==data:
                     resume=0
 
-        if len(sys.argv) == 2:       
-            data = s.recv(100)
+        if len(sys.argv) == client:       
+            data = sock.recv(100)
             if data !="":
-                print("donner recu")
-                x,y=data.split(",")
-                #print(type(x)) 
-                x=int(x)
-                y=int(y)
-                ball_coords.x=x
-                ball_coords.y=y
-                s.send(data)
+                if data =="lost":
+                    print("WIN")
+                    point = point + 1 
+                else:
+
+                   # print("donner recu")
+                    x,y=data.split(",")
+                    #print(type(x)) 
+                    x=int(x)
+                    y=int(y)
+                    ball_coords.x=x
+                    ball_coords.y=y
+                    sock.send(data)
 
     elif ball_coords.x >= width/2:
-        print("Client qui gere la balle")   #Share ball data between server/ client
-        if len(sys.argv) == 2:
+       # print("Client qui gere la balle")   #Share ball data between server/ client
+
+        if len(sys.argv) == client:
             data= str(ball_coords.x)+","+str(ball_coords.y)
             #print(data)
-            s.send(data)
+            sock.send(data)
             resume=1
             while resume:
-                accuse=s.recv(100)
-                print("accuser de reception")
+                accuse=sock.recv(100)
+                #print("accuser de reception")
                 if accuse==data:
                     resume=0
 
-        if len(sys.argv) == 1:       
-            data = new_player.recv(100)
+        if len(sys.argv) == serveur:       
+            data = sock.recv(100)
             if data !="":
-                print("donner recu")
-                x,y=data.split(",")
-                #print(type(x)) 
-                x=int(x)
-                y=int(y)
-                ball_coords.x=x
-                ball_coords.y=y
-                new_player.send(data)
+                if data =="lost":
+                    print("WIN")
+                    point = point + 1  
+                else:
+                    
+                   # print("donner recu")
+                    x,y=data.split(",")
+                    #print(type(x)) 
+                    x=int(x)
+                    y=int(y)
+                    ball_coords.x=x
+                    ball_coords.y=y
+                    sock.send(data)
 
     # voir la position de la balle -- print(all_coords)
     # Rebondir la balle sur le mur
@@ -195,7 +214,7 @@ while True:
     # Move racket
     racket_coords = racket_coords.move(racket_speed)
     # Position de la raquette : server
-    if len(sys.argv)==1:
+    if len(sys.argv)==serveur:
         if racket_coords.left < 0:
             racket_coords.left = 0
         elif racket_coords.right >= width:
@@ -208,10 +227,12 @@ while True:
         if ball_coords.left <= 0:
             if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
                 print("lost!")
-                throw(1)
+                sock.send("lost")
+                throw(serveur)
+
                
     # Posiition de la raquette  : client
-    elif len(sys.argv)==2:
+    elif len(sys.argv)==client:
         if racket_coords.right < width:
             racket_coords.right = width
         elif racket_coords.left >= width:
@@ -224,24 +245,28 @@ while True:
         if ball_coords.right >= width:
             if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
                 print("lost!")
-                throw(2)
+                sock.send("lost")
+                throw(client)
+                
+
         
-    if len(sys.argv)==1:
+    if len(sys.argv)==serveur:
         # Afficher l'ensemble
         screen.fill(clay)
         screen.blit(ball, ball_coords)
         screen.blit(racket, racket_coords)
+        score()
         pygame.display.flip()
         # Attendre 10ms, Depuis il n'y a pas besoin plus que  100Hz rpour raffraichir :)
         pygame.time.delay(10)
     
-    elif len(sys.argv)==2:
+    elif len(sys.argv)==client:
         # Afficher l'ensemble
         screen.fill(clay)
-        #screen.blit(ball,(x,y))
         screen.blit(ball,ball_coords)
         screen.blit(racket, racket_coords)
+
+        score()
+
         pygame.display.flip()
-       
         pygame.time.delay(10)
-    

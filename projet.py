@@ -73,13 +73,35 @@ racket = pygame.image.load("image/racket.png")
 racket_coords = racket.get_rect()
 
 # Throw ball from center
-def throw():
-    ball_coords.left = 2*width/3
+def throw(facteur):
+    ball_coords.left = facteur*width/3
     ball_coords.top = height/2
 
 
 if len(sys.argv)==1:
-    throw()
+    throw(2)
+
+if len(sys.argv) == 1:
+    data= str(ball_coords.x)+","+str(ball_coords.y)
+    #print(data)
+    new_player.send(data)
+    resume=1
+    while resume:
+        accuse=new_player.recv(100)
+        if accuse==data:
+            resume=0
+
+if len(sys.argv) == 2:       
+    data = s.recv(100)
+    if data !="":
+        #print(data)
+        x,y=data.split(",")
+        #print(type(x)) 
+        x=int(x)
+        y=int(y)
+        ball_coords.x=x
+        ball_coords.y=y
+        s.send(data)
 
 while True:            
 
@@ -110,32 +132,58 @@ while True:
 
     # Move ball
     ball_coords = ball_coords.move(ball_speed)
+    print(ball_coords.x)
 
-    #Share ball data between server/ client
-    if len(sys.argv) == 1:
-        data= str(ball_coords.x)+","+str(ball_coords.y)
-        #print(data)
-        new_player.send(data)
-        resume=1
-        while resume:
-            accuse=new_player.recv(100)
-            if accuse==data:
-                resume=0
-
-    if len(sys.argv) == 2:       
-        data = s.recv(100)
-        if data !="":
+    if ball_coords.x < width/2:
+        print("serveur qui gere la balle")
+            #Share ball data between server/ client
+        if len(sys.argv) == 1:
+            data= str(ball_coords.x)+","+str(ball_coords.y)
             #print(data)
-            x,y=data.split(",")
-            #print(type(x)) 
-            x=int(x)
-            y=int(y)
-            ball_coords.x=x
-            ball_coords.y=y
+            new_player.send(data)
+            resume=1
+            while resume:
+                accuse=new_player.recv(100)
+                print("accuser de reception")
+                if accuse==data:
+                    resume=0
+
+        if len(sys.argv) == 2:       
+            data = s.recv(100)
+            if data !="":
+                print("donner recu")
+                x,y=data.split(",")
+                #print(type(x)) 
+                x=int(x)
+                y=int(y)
+                ball_coords.x=x
+                ball_coords.y=y
+                s.send(data)
+
+    elif ball_coords.x >= width/2:
+        print("Client qui gere la balle")   #Share ball data between server/ client
+        if len(sys.argv) == 2:
+            data= str(ball_coords.x)+","+str(ball_coords.y)
+            #print(data)
             s.send(data)
+            resume=1
+            while resume:
+                accuse=s.recv(100)
+                print("accuser de reception")
+                if accuse==data:
+                    resume=0
 
-        
-
+        if len(sys.argv) == 1:       
+            data = new_player.recv(100)
+            if data !="":
+                print("donner recu")
+                x,y=data.split(",")
+                #print(type(x)) 
+                x=int(x)
+                y=int(y)
+                ball_coords.x=x
+                ball_coords.y=y
+                new_player.send(data)
 
     # voir la position de la balle -- print(all_coords)
     # Rebondir la balle sur le mur
@@ -160,7 +208,8 @@ while True:
         if ball_coords.left <= 0:
             if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
                 print("lost!")
-                throw()
+                throw(1)
+               
     # Posiition de la raquette  : client
     elif len(sys.argv)==2:
         if racket_coords.right < width:
@@ -175,7 +224,7 @@ while True:
         if ball_coords.right >= width:
             if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
                 print("lost!")
-                throw()
+                throw(2)
         
     if len(sys.argv)==1:
         # Afficher l'ensemble

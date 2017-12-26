@@ -244,4 +244,3 @@ while True:
         pygame.display.flip()
        
         pygame.time.delay(10)
-    

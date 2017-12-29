@@ -27,11 +27,16 @@ import sys
 import pygame
 import socket
 import select
+import time
+from random import randint
+
 
 serveur=1
 client=2
 point = 0
 point_rival=0
+time_reset=time.time()
+
 #Connexion serveur
 if len(sys.argv)==serveur:
 
@@ -39,7 +44,7 @@ if len(sys.argv)==serveur:
     main_connexion=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
     main_connexion.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
     main_connexion.bind(('',7777)) 
-    main_connexion.listen(1)
+    main_connexion.listen(2)
     player_connect=[]
     sockselect,x,y=select.select(player_connect+[main_connexion],[],[])
     for i in sockselect:
@@ -55,15 +60,21 @@ elif len(sys.argv)==client: # argv[0]=projet.py arv[1]= nom
     sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
     sock.connect((sys.argv[1],7777))
 
+elif len(sys.argv)==3: 
+    print("Connecter en tant que client 3")
+    sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM,0) # SOCK_STREAM pour le protocole TCP
+    sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+    sock.connect((sys.argv[1],7777))
+
 # Screen setup
 
 width = 800
 height = 600
 
-racket_rival_x=width-1
+racket_rival_x=width-20
 racket_rival_y=0
 
-clay = (0xFF, 0x40, 0)
+couleur = (0xFF, 0x40, 0)
 
 ball_speed = [ -2, -2 ]
 racket_speed = [ 0, 0 ]
@@ -74,15 +85,33 @@ screen = pygame.display.set_mode( (width, height) )
 
 # Load resources
 ball = pygame.image.load("image/ball.png")
+ball_jaune=ball
 ball_coords = ball.get_rect()
 
 racket = pygame.image.load("image/racket.png")
 racket_coords = racket.get_rect()
 
+bonus = pygame.image.load("image/Bonus.png")
+bonus_coords=bonus.get_rect()
+
+ball_noel = pygame.image.load("image/ball_noel.png")
+ball_coords_noel = ball_noel.get_rect()
+
+bonus_coords.x=randint(0,width-bonus_coords.width)
+bonus_coords.y=randint(0,height-bonus_coords.height)
+
+
 # Throw ball from center
 def throw(facteur):
     ball_coords.left = facteur*width/3
     ball_coords.top = height/2
+
+def switch_ball():
+    global ball
+    if ball==ball_noel:
+        ball=ball_jaune
+    else:
+        ball=ball_noel
 
 def score(facteur,point):
     font=pygame.font.SysFont("Arial",24,bold=True)
@@ -97,20 +126,20 @@ def gestion(serveurbis,clientbis):
         while resume:
             accuse=sock.recv(100)
             if accuse==data:
-                #print("ACK")
                 resume=0
 
     if len(sys.argv) == clientbis:       
-        data = sock.recv(100)
-        
+        data = sock.recv(100)   
         if data !="":
+
             if data =="lost":
+                switch_ball()
                 print("WIN")
                 global point
                 point = point + 1
                 pointdata=str(point)
                 sock.send(pointdata)
-                
+
             else:
                 global racket_rival_x,racket_rival_y
                 x,y,a,b=data.split(",")
@@ -126,8 +155,12 @@ def gestion(serveurbis,clientbis):
 if len(sys.argv)==serveur:
     throw(serveur)
 
-while True:            
+while True:
+    #Chrono
+    time_round=time.time()
+    time_diff=time_round-time_reset
 
+    #list of event
     for e in pygame.event.get():
         # Check for exit
         if e.type == pygame.QUIT:
@@ -149,26 +182,29 @@ while True:
             elif e.key == pygame.K_DOWN:
                 racket_speed[1] = 0
                 pass
+        # mouse click on bonus
+        if e.type ==pygame.MOUSEBUTTONDOWN:
+            if bonus_coords.collidepoint(pygame.mouse.get_pos()):
+                time_reset=time.time()
+                couleur= (0xB2, 0xC0, 53)
+    
+    #time period of bonus
+    if time_diff>5 and time_diff<6:
+        couleur = (0xFF, 0x40, 0)
+        time_add=time.time()
 
-        #else:
-        #    print(e)
-
-    # Move ball
     ball_coords = ball_coords.move(ball_speed)
-    #print(ball_coords.x)
 
+    #who send and who receive ? 
     if ball_coords.x < width/2:
-        #print("serveur qui gere...")
         gestion(1,2)
         
-
     elif ball_coords.x >= width/2:
-        #print("client qui gere...")
         gestion(2,1)
 
 
     # voir la position de la balle -- print(all_coords)
-    # Rebondir la balle sur le mur
+    # bounce on the wall
     if ball_coords.left < 0 or ball_coords.right >= width:
         ball_speed[0] = -ball_speed[0]
     if ball_coords.top < 0 or ball_coords.bottom >= height:
@@ -176,7 +212,7 @@ while True:
 
     # Move racket
     racket_coords = racket_coords.move(racket_speed)
-    # Position de la raquette : server
+    # racket position  : server
     if len(sys.argv)==serveur:
         if racket_coords.left < 0:
             racket_coords.left = 0
@@ -191,6 +227,7 @@ while True:
             if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
                 print("lost!")
                 sock.send("lost")
+                switch_ball()
                 resume =1
                 while resume:
                     point_rival=sock.recv(100)
@@ -199,9 +236,8 @@ while True:
                         point_rival=int(point_rival)
                         resume=0
                 throw(serveur)
-
                
-    # Posiition de la raquette  : client
+    # racket posiiton  : client
     elif len(sys.argv)==client:
         if racket_coords.right < width:
             racket_coords.right = width
@@ -216,6 +252,7 @@ while True:
             if ball_coords.bottom <= racket_coords.top or ball_coords.top >= racket_coords.bottom:
                 print("lost!")
                 sock.send("lost")
+                switch_ball()
                 resume =1
                 while resume:
                     point_rival=sock.recv(100)
@@ -224,28 +261,16 @@ while True:
                         print(point_rival)
                         point_rival=int(point_rival)
                 throw(client)
-                
 
-        
-    if len(sys.argv)==serveur:
-        # Afficher l'ensemble
-        screen.fill(clay)
-        screen.blit(ball, ball_coords)
-        screen.blit(racket, racket_coords)
-        screen.blit(racket,(racket_rival_x,racket_rival_y))
-        score(serveur,point)
-        score(client,point_rival)
-        pygame.display.flip()
-        # Attendre 10ms, Depuis il n'y a pas besoin plus que  100Hz rpour raffraichir :)
-        pygame.time.delay(10)
-    
-    elif len(sys.argv)==client:
-        # Afficher l'ensemble
-        screen.fill(clay)
-        screen.blit(ball,ball_coords)
-        screen.blit(racket, racket_coords)
-        screen.blit(racket,(racket_rival_x,racket_rival_y))
-        score(client,point)
-        score(serveur,point_rival)
-        pygame.display.flip()
-        pygame.time.delay(10)
+
+    # display all
+    screen.fill(couleur)
+    screen.blit(bonus,bonus_coords)
+    screen.blit(ball, ball_coords)
+    screen.blit(racket, racket_coords)
+    screen.blit(racket,(racket_rival_x,racket_rival_y))
+    score(serveur,point)
+    score(client,point_rival)
+    pygame.display.flip()
+    pygame.time.delay(10)
+
